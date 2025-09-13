@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<title>Tech Shop</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; background:#f4f4f4;}
+header { background:#1e90ff; color:white; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;}
+header h1 { margin:0; cursor:pointer;}
+nav a { color:white; margin-left:15px; text-decoration:none; cursor:pointer;}
+nav a:hover { text-decoration:underline;}
+.container { padding:20px; }
+.shop { display:grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap:20px;}
+.product { background:#fff; padding:15px; border-radius:10px; text-align:center; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.product img { max-width:100%; height:200px; object-fit:contain;}
+button { padding:10px 20px; background:#1e90ff; color:white; border:none; border-radius:6px; cursor:pointer; margin-top:10px;}
+button:hover { background:#007acc;}
+.modal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.5);}
+.modal-content { background:#fff; margin:5% auto; padding:20px; border-radius:10px; width:90%; max-width:400px; text-align:center;}
+.close { float:right; font-size:22px; cursor:pointer; color:red;}
+.input-field { width:90%; padding:8px; margin:8px 0; border:1px solid #ccc; border-radius:5px;}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Tech Shop</h1>
+<nav>
+<a onclick="openModal('loginModal')">Login</a>
+<a onclick="openModal('registerModal')">Register</a>
+<a onclick="openAccount()">Moj Account</a>
+<a onclick="logout()">Odjavi se</a>
+<a onclick="openCart()">Korpa</a>
+</nav>
+</header>
+
+<div class="container">
+<h2>Proizvodi</h2>
+<div class="shop" id="productContainer">
+<!-- Proizvodi se učitavaju ovde -->
+</div>
+</div>
+
+<!-- MODALI -->
+
+<!-- Register -->
+<div id="registerModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('registerModal')">&times;</span>
+<h2>Registracija</h2>
+<input type="text" id="regName" class="input-field" placeholder="Ime">
+<input type="email" id="regEmail" class="input-field" placeholder="Email">
+<input type="text" id="regPhone" class="input-field" placeholder="Broj telefona">
+<input type="password" id="regPassword" class="input-field" placeholder="Lozinka">
+<button onclick="registerUser()">Registruj se</button>
+</div>
+</div>
+
+<!-- Login -->
+<div id="loginModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('loginModal')">&times;</span>
+<h2>Login</h2>
+<input type="email" id="loginEmail" class="input-field" placeholder="Email">
+<input type="password" id="loginPassword" class="input-field" placeholder="Lozinka">
+<button onclick="loginUser()">Login</button>
+</div>
+</div>
+
+<!-- Account -->
+<div id="accountModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('accountModal')">&times;</span>
+<h2>Moj Account</h2>
+<p id="accountInfo"></p>
+<input type="text" id="editName" class="input-field" placeholder="Ime">
+<input type="email" id="editEmail" class="input-field" placeholder="Email">
+<input type="text" id="editPhone" class="input-field" placeholder="Broj telefona">
+<input type="password" id="editPassword" class="input-field" placeholder="Lozinka">
+<button onclick="updateAccount()">Sačuvaj promene</button>
+</div>
+</div>
+
+<!-- Korpa -->
+<div id="cartModal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal('cartModal')">&times;</span>
+<h2>Korpa</h2>
+<div id="cartItems"></div>
+<button onclick="checkout()">Kupi sve</button>
+</div>
+</div>
+
+<script>
+// PODACI
+let users = JSON.parse(localStorage.getItem('shopUsers')) || [];
+let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+let cart = [];
+
+// Proizvodi
+let products = [
+    {id:1,name:"Redmi 10C",category:"Telefon",price:2600,image:"https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-10c.jpg"},
+    {id:2,name:"Samsung A14",category:"Telefon",price:3200,image:"https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-a14-4g.jpg"},
+    {id:3,name:"iPhone 11",category:"Telefon",price:4500,image:"https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-11.jpg"},
+    {id:4,name:"Redmi Note 12",category:"Telefon",price:3500,image:"https://fdn2.gsmarena.com/vv/bigpic/xiaomi-redmi-note-12.jpg"},
+    {id:5,name:"Dell Laptop",category:"Laptop",price:55000,image:"https://fdn2.gsmarena.com/vv/bigpic/dell-laptop.jpg"},
+    {id:6,name:"PC Računar",category:"Računar",price:75000,image:"https://fdn2.gsmarena.com/vv/bigpic/pc.jpg"}
+];
+
+// Render proizvoda
+function renderProducts(){
+    let container = document.getElementById('productContainer');
+    container.innerHTML='';
+    products.forEach(p=>{
+        let div = document.createElement('div');
+        div.className='product';
+        div.innerHTML=`<img src="${p.image}" alt="${p.name}">
+        <h3>${p.name}</h3>
+        <p>Kategorija: ${p.category}</p>
+        <p>Cena: ${p.price} dinara</p>
+        <button onclick="addToCart(${p.id})">Dodaj u korpu</button>`;
+        container.appendChild(div);
+    });
+}
+
+// MODALI
+function openModal(id){ document.getElementById(id).style.display='block'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+
+// Registracija
+function registerUser(){
+    let name=document.getElementById('regName').value;
+    let email=document.getElementById('regEmail').value;
+    let phone=document.getElementById('regPhone').value;
+    let pass=document.getElementById('regPassword').value;
+    if(!name||!email||!phone||!pass){ alert('Popunite sva polja!'); return; }
+    if(users.find(u=>u.email===email)){ alert('Email je zauzet!'); return; }
+    let user={name,email,phone,password:pass};
+    users.push(user);
+    localStorage.setItem('shopUsers',JSON.stringify(users));
+    alert('Registracija uspešna!');
+    closeModal('registerModal');
+}
+
+// Login
+function loginUser(){
+    let email=document.getElementById('loginEmail').value;
+    let pass=document.getElementById('loginPassword').value;
+    let user = users.find(u=>u.email===email && u.password===pass);
+    if(user){ currentUser=user; localStorage.setItem('currentUser',JSON.stringify(currentUser)); alert('Login uspešan!'); closeModal('loginModal'); } 
+    else alert('Pogrešan email ili lozinka!');
+}
+
+// Logout
+function logout(){
+    currentUser=null;
+    localStorage.removeItem('currentUser');
+    alert('Odjavili ste se!');
+}
+
+// Account
+function openAccount(){
+    if(!currentUser){ alert('Morate biti ulogovani!'); return; }
+    document.getElementById('accountInfo').innerHTML=`Ime: ${currentUser.name}<br>Email: ${currentUser.email}<br>Telefon: ${currentUser.phone}<br>Lozinka: ${currentUser.password}`;
+    document.getElementById('editName').value=currentUser.name;
+    document.getElementById('editEmail').value=currentUser.email;
+    document.getElementById('editPhone').value=currentUser.phone;
+    document.getElementById('editPassword').value=currentUser.password;
+    openModal('accountModal');
+}
+
+// Update account
+function updateAccount(){
+    let name=document.getElementById('editName').value;
+    let email=document.getElementById('editEmail').value;
+    let phone=document.getElementById('editPhone').value;
+    let pass=document.getElementById('editPassword').value;
+    if(!name||!email||!phone||!pass){ alert('Popunite sva polja!'); return; }
+    let index=users.findIndex(u=>u.email===currentUser.email);
+    users[index]={name,email,phone,password:pass};
+    currentUser={name,email,phone,password:pass};
+    localStorage.setItem('shopUsers',JSON.stringify(users));
+    localStorage.setItem('currentUser',JSON.stringify(currentUser));
+    alert('Informacije uspešno ažurirane!');
+    closeModal('accountModal');
+}
+
+// Korpa
+function addToCart(id){
+    if(!currentUser){ alert('Morate biti ulogovani!'); return; }
+    let p=products.find(x=>x.id===id);
+    cart.push(p);
+    alert(`${p.name} dodat u korpu!`);
+}
+
+function openCart(){
+    if(!currentUser){ alert('Morate biti ulogovani!'); return; }
+    let container=document.getElementById('cartItems');
+    container.innerHTML='';
+    if(cart.length===0){ container.innerHTML='<p>Korpa je prazna</p>'; } 
+    else{
+        cart.forEach((c,i)=>{
+            let div=document.createElement('div');
+            div.innerHTML=`${c.name} - ${c.price} din <button onclick="removeFromCart(${i})">Ukloni</button>`;
+            container.appendChild(div);
+        });
+    }
+    openModal('cartModal');
+}
+
+function removeFromCart(i){ cart.splice(i,1); openCart(); }
+
+function checkout(){
+    if(cart.length===0){ alert('Korpa je prazna!'); return; }
+    alert('Kupovina uspešna!\nKupljeno: '+cart.map(c=>c.name).join(', '));
+    cart=[];
+    closeModal('cartModal');
+}
+
+// inicijalno renderovanje proizvoda
+renderProducts();
+</script>
+
+</body>
+</html>
